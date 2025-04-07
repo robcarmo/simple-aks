@@ -1,0 +1,59 @@
+name: Infrastructure Management (Apply or Destroy)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform (apply or destroy)'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+jobs:
+  manage-infra:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Azure Login
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      # Terraform Init
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init
+
+      # Terraform Plan (when action is apply)
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          cd infra
+          terraform plan -out=tfplan
+
+      # Terraform Apply
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          cd infra
+          terraform apply -auto-approve tfplan
+
+      # Terraform Destroy
+      - name: Terraform Destroy
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: |
+          cd infra
+          terraform destroy -auto-approve

@@ -1,0 +1,38 @@
+name: Deploy to AKS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'k8s/**'
+  workflow_run:
+    workflows: ["Build and Push App Container"]
+    types: [completed]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    if: github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Azure Login
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Get AKS Credentials for kubectl
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }}
+
+      # Deploy Kubernetes manifests
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -f k8s/

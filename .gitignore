@@ -1,0 +1,32 @@
+# Terraform
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/terraform.tfstate*
+infra/crash.log
+
+# Node.js
+app/node_modules/
+app/.env
+
+# System/IDE files
+.DS_Store
+__MACOSX/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Logs
+*.log
+
+# VSCode
+.vscode/
+
+# Secrets (just in case someone adds them manually)
+*.key
+*.pem
+*.crt
+*.env
+
+# GitHub Actions cache (if enabled)
+.github/workflows/*.log

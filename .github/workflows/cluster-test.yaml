@@ -1,0 +1,60 @@
+name: Manual Cluster Verification (AKS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      timeout:
+        description: 'Test Timeout (seconds)'
+        required: true
+        default: '300'
+        type: string
+
+jobs:
+  cluster-verification:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Azure Login
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Get AKS Credentials
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AKS_CLUSTER_NAME }}
+
+      # Verify Deployment
+      - name: Verify Deployment 'hello-world'
+        run: |
+          AVAILABLE_REPLICAS=$(kubectl get deployment hello-world -o jsonpath='{.status.availableReplicas}' || echo "0")
+          if [[ "$AVAILABLE_REPLICAS" -eq 1 ]]; then
+            echo "Deployment is healthy"
+          else
+            echo "Deployment unhealthy or not available"
+            exit 1
+          fi
+
+      # End-to-End Test
+      - name: End-to-End Test
+        run: |
+          TIMEOUT=${{ github.event.inputs.timeout }}
+          echo "Waiting up to $TIMEOUT seconds for External IP..."
+          for i in $(seq 1 $((TIMEOUT/10))); do
+            EXTERNAL_IP=$(kubectl get service hello-world -o jsonpath='{.status.loadBalancer.ingress[0].ip}' || echo "")
+            if [[ -n "$EXTERNAL_IP" && "$EXTERNAL_IP" != "<none>" && "$EXTERNAL_IP" != "null" ]]; then
+              echo "Found External IP: $EXTERNAL_IP"
+              break
+            fi
+            echo "Waiting for External IP... (${i}0s elapsed)"
+            sleep 10
+          done
+
+          if [[ -z "$EXTERNAL_IP" || "$EXTERNAL_IP" == "<none>" || "$EXTERNAL_IP" == "null" ]]; then
+            echo "Timed out waiting for External IP"
+            exit 1
+          fi
+
+          echo "Testing HTTP Response from $EXTERNAL_IP"
+          curl -s --max-time 10 http://$EXTERNAL_IP | grep "Hello World!" || { echo "Test Failed"; exit 1; }

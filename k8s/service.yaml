@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-world # Name of the service
+spec:
+  type: LoadBalancer # Azure will automatically create a public IP + LoadBalancer
+  selector:
+    app: hello-world # Match the deployment pods
+  ports:
+  - port: 80 # External port exposed
+    targetPort: 8080 # Internal container port

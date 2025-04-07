@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world # Name of the deployment
+spec:
+  replicas: 1 # Number of replicas
+  selector:
+    matchLabels:
+      app: hello-world # Must match pod labels
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world # Container name
+        image: simpleaksacr12345.azurecr.io/hello-world:latest # <- Replace with your ACR login server
+        imagePullPolicy: Always # Always pull to get the latest image
+        ports:
+        - containerPort: 8080 # Expose port inside the pod
+
+        # Liveness Probe: checks if the app is healthy
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+
+        # Readiness Probe: checks if the app is ready to serve traffic
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 2
